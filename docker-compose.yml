@@ -1,0 +1,63 @@
+version: "3.8"
+
+networks:
+    laravel:
+        driver: bridge
+        name: laravel
+
+services:
+    nginx_lar:
+        build:
+            dockerfile: ./.docker/nginx/Dockerfile
+        container_name: nginx_lar
+        ports:
+            - "8081:80"
+            - "8082:443"
+        volumes:
+            - .:/var/www
+            - .docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+            - .docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+        depends_on:
+            - app_lar
+        networks:
+            - laravel
+
+    # Database
+    db_lar:
+        image: mysql:5.7
+        restart: always
+        ports:
+            - "3307:3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+        networks:
+            - laravel
+
+    # phpmyadmin
+    phpmyadmin:
+        depends_on:
+            - db_lar
+        image: phpmyadmin
+        restart: always
+        ports:
+            - "8090:80"
+        environment:
+            PMA_HOST: db_lar
+            PMA_USER: root
+            PMA_PASSWORD: ${DB_PASSWORD}
+            PMA_PORT: 3306
+        networks:
+            - laravel
+
+    app_lar:
+        container_name: app_lar
+        build:
+            dockerfile: ./.docker/php-fpm/Dockerfile
+        ports:
+            - "9001:9001"
+        volumes:
+            - ./:/var/www:cached
+        networks:
+            - laravel
